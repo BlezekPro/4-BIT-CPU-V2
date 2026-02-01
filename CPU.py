@@ -1,6 +1,6 @@
 import time
 
-# Funkcja do konwersji 4-bit unsigned na signed aby dzialalo odejmowanie
+# Funkcja do konwersji 4-bit unsigned na signed aby działało odejmowanie
 def signed4bit(val):
     return val - 16 if val > 7 else val
 
@@ -15,6 +15,9 @@ class CPU:
         self.halted = False
         self.clock_hz = clock_hz
         self.clock_delay = 1 / clock_hz if clock_hz > 0 else 0
+        # do przechowania finalnego wyniku
+        self.final_A = 0
+        self.final_C = 0
 
     def fetch(self):
         instr = self.program[self.PC]
@@ -64,11 +67,15 @@ class CPU:
             self.A = r & 0xF
         elif opcode == 0xD:  # HALT
             self.halted = True
+            # zapamiętujemy wynik
+            self.final_A = self.A
+            self.final_C = self.C
         elif opcode == 0xE:  # IN
             self.A = int(input("IN (0-15): ")) & 0xF
         elif opcode == 0xF:  # OUT
             print("OUT:", signed4bit(self.A))  # wyświetlamy signed
 
+        # aktualizacja flagi zero
         self.Z = 1 if self.A == 0 else 0
 
     def run(self, max_steps=1000):
@@ -122,14 +129,14 @@ code = [
     "IN",        # druga liczba
     "STORE 1",   # RAM[1] = y
     "IN",        # wybór: 0 = ADD, 1 = SUB
-    "JZ 9",      # jeśli 0 to skocz do ADD
-    # Odejmowanie
+    "JZ 10",     # jeśli 0 to skocz do ADD (linia 10)
+    # Odejmowanie (wybór = 1)
     "LOADM 1",   # A = y
     "SUBM 0",    # A = y - x
     "OUT",
     "HALT",
-    # Dodawanie
-    "LOADM 1",   # A = y
+    # Dodawanie (wybór = 0)
+    "LOADM 1",   # linia 10: A = y
     "ADDM 0",    # A = y + x
     "OUT",
     "HALT"
@@ -137,6 +144,8 @@ code = [
 
 
 # URUCHOMIENIE CPU
-cpu = CPU(clock_hz=2)  # 2 Hz,  0 = turbo
+cpu = CPU(clock_hz=2)
 cpu.program = assemble(code)
 cpu.run()
+
+print("FINAL RESULT:", signed4bit(cpu.final_A), "CARRY:", cpu.final_C)
